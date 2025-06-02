@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Объявление - Доска объявлений</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100">
+    <nav class="bg-white shadow-lg">
+        <div class="max-w-6xl mx-auto px-4">
+            <div class="flex justify-between">
+                <div class="flex space-x-7">
+                    <div>
+                        <a href="/" class="flex items-center py-4">
+                            <span class="font-semibold text-gray-500 text-lg">Доска объявлений</span>
+                        </a>
+                    </div>
+                </div>
+                <div class="flex items-center">
+                    <a href="/" class="text-blue-600 hover:text-blue-800">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+                        </svg>
+                    </a>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <main class="max-w-4xl mx-auto mt-8 px-4">
+        <div class="bg-white rounded-lg shadow-lg p-6">
+            <div id="advertisementContent">
+                <!-- Advertisement content will be loaded here -->
+            </div>
+        </div>
+    </main>
+
+    <!-- Contact Modal -->
+    <div id="contactModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 hidden overflow-y-auto h-full w-full">
+        <div class="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
+            <div class="mt-3">
+                <h3 class="text-lg font-medium text-gray-900 mb-4">Контактная информация</h3>
+                <div id="captchaSection" class="mb-4">
+                    <p class="text-sm text-gray-600 mb-2">Пожалуйста, решите простую математическую задачу:</p>
+                    <div class="flex items-center space-x-2">
+                        <span id="captchaQuestion" class="text-lg font-semibold"></span>
+                        <input type="number" id="captchaAnswer" class="mt-1 block w-20 rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500" placeholder="?">
+                    </div>
+                </div>
+                <div id="contactInfo" class="hidden">
+                    <p class="text-sm text-gray-600 mb-2">Имя: <span id="contactName" class="font-medium"></span></p>
+                    <p class="text-sm text-gray-600 mb-2">Email: <span id="contactEmail" class="font-medium"></span></p>
+                    <p class="text-sm text-gray-600">Телефон: <span id="contactPhone" class="font-medium"></span></p>
+                </div>
+                <div class="flex justify-end space-x-3 mt-4">
+                    <button id="closeModal" class="px-4 py-2 bg-gray-300 text-gray-700 rounded-md hover:bg-gray-400">
+                        Закрыть
+                    </button>
+                    <button id="showContacts" class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700">
+                        Показать контакты
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Generate random captcha
+        function generateCaptcha() {
+            const num1 = Math.floor(Math.random() * 10);
+            const num2 = Math.floor(Math.random() * 10);
+            const question = `${num1} + ${num2} = ?`;
+            const answer = num1 + num2;
+            return { question, answer };
+        }
+
+        // Load advertisement details
+        async function loadAdvertisement() {
+            const adId = window.location.pathname.split('/').pop();
+            try {
+                const response = await fetch(`/api/advertisements/${adId}`);
+                const ad = await response.json();
+                
+                const content = document.getElementById('advertisementContent');
+                content.innerHTML = `
+                    <div class="space-y-6">
+                        <div class="flex justify-between items-start">
+                            <h1 class="text-2xl font-semibold">${ad.title}</h1>
+                            <span class="text-xl font-bold text-blue-600">${ad.price} ₽</span>
+                        </div>
+                        
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div class="space-y-4">
+                                ${ad.images && ad.images.length > 0 ? `
+                                    <img src="${ad.images[0].url}" alt="${ad.title}" class="w-full h-64 object-cover rounded-lg">
+                                    <div class="grid grid-cols-4 gap-2">
+                                        ${ad.images.slice(1).map(img => `
+                                            <img src="${img.url}" alt="${ad.title}" class="w-full h-20 object-cover rounded-lg">
+                                        `).join('')}
+                                    </div>
+                                ` : `
+                                    <div class="w-full h-64 bg-gray-200 rounded-lg flex items-center justify-center">
+                                        <span class="text-gray-500">Нет изображений</span>
+                                    </div>
+                                `}
+                            </div>
+                            
+                            <div class="space-y-4">
+                                <div>
+                                    <h3 class="text-lg font-medium">Описание</h3>
+                                    <p class="text-gray-600">${ad.description || 'Нет описания'}</p>
+                                </div>
+                                
+                                <div>
+                                    <h3 class="text-lg font-medium">Местоположение</h3>
+                                    <p class="text-gray-600">${ad.location || 'Не указано'}</p>
+                                </div>
+                                
+                                <div>
+                                    <h3 class="text-lg font-medium">Категория</h3>
+                                    <p class="text-gray-600">${ad.category ? ad.category.name : 'Не указана'}</p>
+                                </div>
+                                
+                                <button onclick="showContactModal()" class="w-full px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700">
+                                    Показать контакты
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            } catch (error) {
+                console.error('Ошибка загрузки объявления:', error);
+            }
+        }
+
+        // Modal handling
+        let currentCaptcha = null;
+        let currentAd = null;
+
+        function showContactModal() {
+            currentCaptcha = generateCaptcha();
+            document.getElementById('captchaQuestion').textContent = currentCaptcha.question;
+            document.getElementById('captchaAnswer').value = '';
+            document.getElementById('contactInfo').classList.add('hidden');
+            document.getElementById('contactModal').classList.remove('hidden');
+        }
+
+        document.getElementById('closeModal').addEventListener('click', () => {
+            document.getElementById('contactModal').classList.add('hidden');
+        });
+
+        document.getElementById('showContacts').addEventListener('click', async () => {
+            const answer = parseInt(document.getElementById('captchaAnswer').value);
+            
+            if (answer === currentCaptcha.answer) {
+                const adId = window.location.pathname.split('/').pop();
+                try {
+                    const response = await fetch(`/api/advertisements/${adId}/contact`);
+                    const data = await response.json();
+                    
+                    document.getElementById('contactName').textContent = data.name;
+                    document.getElementById('contactEmail').textContent = data.email;
+                    document.getElementById('contactPhone').textContent = data.phone || 'Не указан';
+                    document.getElementById('contactInfo').classList.remove('hidden');
+                } catch (error) {
+                    alert('Ошибка получения контактной информации');
+                }
+            } else {
+                alert('Неверный ответ. Попробуйте еще раз.');
+                currentCaptcha = generateCaptcha();
+                document.getElementById('captchaQuestion').textContent = currentCaptcha.question;
+                document.getElementById('captchaAnswer').value = '';
+            }
+        });
+
+        // Initialize page
+        loadAdvertisement();
+    </script>
+</body>
+</html> 

@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ .title }}</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100">
+    <nav class="bg-white shadow-lg">
+        <div class="max-w-6xl mx-auto px-4">
+            <div class="flex justify-between">
+                <div class="flex space-x-7">
+                    <div>
+                        <a href="/" class="flex items-center py-4">
+                            <span class="font-semibold text-gray-500 text-lg">Доска объявлений</span>
+                        </a>
+                    </div>
+                </div>
+                <div class="flex items-center space-x-3" id="authButtons">
+                    <a href="/login" class="py-2 px-4 text-gray-500 hover:text-gray-700">Войти</a>
+                    <a href="/register" class="py-2 px-4 bg-blue-500 text-white rounded hover:bg-blue-600">Регистрация</a>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <main class="max-w-6xl mx-auto mt-8 px-4">
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <!-- Categories Sidebar -->
+            <div class="md:col-span-1">
+                <div class="bg-white rounded-lg shadow p-6">
+                    <h2 class="text-xl font-semibold mb-4">Категории</h2>
+                    <ul class="space-y-2" id="categoriesList">
+                        <!-- Categories will be loaded here -->
+                    </ul>
+                </div>
+            </div>
+
+            <!-- Main Content -->
+            <div class="md:col-span-2">
+                <div class="bg-white rounded-lg shadow p-6">
+                    <div class="flex justify-between items-center mb-6">
+                        <h1 class="text-2xl font-semibold">Последние объявления</h1>
+                        <a href="/create-ad" class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600">
+                            Разместить объявление
+                        </a>
+                    </div>
+
+                    <!-- Advertisement Grid -->
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6" id="advertisementsGrid">
+                        <!-- Advertisements will be loaded here -->
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <footer class="bg-white shadow-lg mt-8">
+        <div class="max-w-6xl mx-auto px-4 py-6">
+            <p class="text-center text-gray-500">&copy; 2024 Доска объявлений. Все права защищены.</p>
+        </div>
+    </footer>
+
+    <script>
+        // Check authentication status
+        function checkAuth() {
+            const token = localStorage.getItem('token');
+            const authButtons = document.getElementById('authButtons');
+            if (token) {
+                const user = JSON.parse(localStorage.getItem('user'));
+                authButtons.innerHTML = `
+                    <span class="text-gray-500">Добро пожаловать, ${user.name}</span>
+                    <button onclick="logout()" class="py-2 px-4 text-gray-500 hover:text-gray-700">Выйти</button>
+                `;
+            }
+        }
+
+        // Logout function
+        function logout() {
+            localStorage.removeItem('token');
+            localStorage.removeItem('user');
+            window.location.reload();
+        }
+
+        // Load categories
+        async function loadCategories() {
+            try {
+                const response = await fetch('/api/categories');
+                const categories = await response.json();
+                const categoriesList = document.getElementById('categoriesList');
+                
+                categories.forEach(category => {
+                    const li = document.createElement('li');
+                    li.innerHTML = `
+                        <a href="#" onclick="filterByCategory(${category.id})" class="text-blue-500 hover:text-blue-700">
+                            ${category.name}
+                        </a>
+                    `;
+                    categoriesList.appendChild(li);
+                });
+            } catch (error) {
+                console.error('Ошибка загрузки категорий:', error);
+            }
+        }
+
+        // Load advertisements
+        async function loadAdvertisements(categoryId = null) {
+            try {
+                let url = '/api/advertisements';
+                if (categoryId) {
+                    url += `?category_id=${categoryId}`;
+                }
+                
+                const response = await fetch(url);
+                const data = await response.json();
+                const grid = document.getElementById('advertisementsGrid');
+                grid.innerHTML = '';
+
+                data.data.forEach(ad => {
+                    const card = document.createElement('div');
+                    card.className = 'border rounded-lg overflow-hidden hover:shadow-lg transition-shadow duration-200';
+                    card.innerHTML = `
+                        <a href="/advertisements/${ad.id}" class="block">
+                            ${ad.images && ad.images.length > 0 ? 
+                                `<img src="${ad.images[0].url.startsWith('/') ? ad.images[0].url : '/' + ad.images[0].url}" alt="${ad.title}" class="w-full h-48 object-cover" onerror="this.onerror=null; this.src='/static/no-image.png';">` :
+                                `<div class="w-full h-48 bg-gray-200 flex items-center justify-center">
+                                    <span class="text-gray-500">Нет изображения</span>
+                                </div>`
+                            }
+                            <div class="p-4">
+                                <h3 class="font-semibold text-lg mb-2">${ad.title}</h3>
+                                <p class="text-gray-600 mb-2 line-clamp-2">${ad.description || ''}</p>
+                                <div class="flex justify-between items-center">
+                                    <span class="text-blue-500 font-semibold">${ad.price} ₽</span>
+                                    <span class="text-gray-500">${ad.location || ''}</span>
+                                </div>
+                            </div>
+                        </a>
+                    `;
+                    grid.appendChild(card);
+                });
+            } catch (error) {
+                console.error('Ошибка загрузки объявлений:', error);
+            }
+        }
+
+        // Filter by category
+        function filterByCategory(categoryId) {
+            loadAdvertisements(categoryId);
+        }
+
+        // Initialize page
+        checkAuth();
+        loadCategories();
+        loadAdvertisements();
+    </script>
+</body>
+</html> 

@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Создание объявления - Доска объявлений</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100">
+    <nav class="bg-white shadow-lg">
+        <div class="max-w-6xl mx-auto px-4">
+            <div class="flex justify-between">
+                <div class="flex space-x-7">
+                    <div>
+                        <a href="/" class="flex items-center py-4">
+                            <span class="font-semibold text-gray-500 text-lg">Доска объявлений</span>
+                        </a>
+                    </div>
+                </div>
+                <div class="flex items-center">
+                    <a href="/" class="text-blue-600 hover:text-blue-800">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+                        </svg>
+                    </a>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <main class="max-w-4xl mx-auto mt-8 px-4">
+        <div class="bg-white rounded-lg shadow-lg p-6">
+            <h1 class="text-2xl font-semibold mb-6">Создание объявления</h1>
+            
+            <form id="createAdForm" class="space-y-6">
+                <div>
+                    <label for="title" class="block text-sm font-medium text-gray-700">Заголовок</label>
+                    <input type="text" id="title" name="title" required
+                        class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                </div>
+
+                <div>
+                    <label for="description" class="block text-sm font-medium text-gray-700">Описание</label>
+                    <textarea id="description" name="description" rows="4"
+                        class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"></textarea>
+                </div>
+
+                <div>
+                    <label for="price" class="block text-sm font-medium text-gray-700">Цена</label>
+                    <input type="number" id="price" name="price" required min="0" step="0.01"
+                        class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                </div>
+
+                <div>
+                    <label for="location" class="block text-sm font-medium text-gray-700">Местоположение</label>
+                    <input type="text" id="location" name="location"
+                        class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                </div>
+
+                <div>
+                    <label for="category" class="block text-sm font-medium text-gray-700">Категория</label>
+                    <select id="category" name="category_id" required
+                        class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                        <option value="">Выберите категорию</option>
+                    </select>
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">Фотографии</label>
+                    <div class="mt-1 flex justify-center px-6 pt-5 pb-6 border-2 border-gray-300 border-dashed rounded-md">
+                        <div class="space-y-1 text-center">
+                            <svg class="mx-auto h-12 w-12 text-gray-400" stroke="currentColor" fill="none" viewBox="0 0 48 48">
+                                <path d="M28 8H12a4 4 0 00-4 4v20m32-12v8m0 0v8a4 4 0 01-4 4H12a4 4 0 01-4-4v-4m32-4l-3.172-3.172a4 4 0 00-5.656 0L28 28M8 32l9.172-9.172a4 4 0 015.656 0L28 28m0 0l4 4m4-24h8m-4-4v8m-12 4h.02" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+                            </svg>
+                            <div class="flex text-sm text-gray-600">
+                                <label for="images" class="relative cursor-pointer bg-white rounded-md font-medium text-blue-600 hover:text-blue-500 focus-within:outline-none focus-within:ring-2 focus-within:ring-offset-2 focus-within:ring-blue-500">
+                                    <span>Загрузить файлы</span>
+                                    <input id="images" name="images" type="file" multiple accept="image/*" class="sr-only">
+                                </label>
+                                <p class="pl-1">или перетащите</p>
+                            </div>
+                            <p class="text-xs text-gray-500">PNG, JPG, GIF до 10MB</p>
+                        </div>
+                    </div>
+                    <div id="imagePreview" class="mt-4 grid grid-cols-3 gap-4"></div>
+                </div>
+
+                <div class="flex justify-end space-x-4">
+                    <a href="/" class="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50">
+                        Отмена
+                    </a>
+                    <button type="submit" class="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                        Создать объявление
+                    </button>
+                </div>
+            </form>
+        </div>
+    </main>
+
+    <script>
+        // Load categories
+        async function loadCategories() {
+            try {
+                const response = await fetch('/api/categories');
+                const categories = await response.json();
+                const select = document.getElementById('category');
+                
+                categories.forEach(category => {
+                    const option = document.createElement('option');
+                    option.value = category.id;
+                    option.textContent = category.name;
+                    select.appendChild(option);
+                });
+            } catch (error) {
+                console.error('Ошибка загрузки категорий:', error);
+            }
+        }
+
+        // Handle image preview
+        const imageInput = document.getElementById('images');
+        const imagePreview = document.getElementById('imagePreview');
+
+        imageInput.addEventListener('change', function() {
+            imagePreview.innerHTML = '';
+            Array.from(this.files).forEach(file => {
+                if (file.type.startsWith('image/')) {
+                    const reader = new FileReader();
+                    reader.onload = function(e) {
+                        const div = document.createElement('div');
+                        div.className = 'relative';
+                        div.innerHTML = `
+                            <img src="${e.target.result}" class="h-32 w-full object-cover rounded-lg">
+                            <button type="button" class="absolute top-0 right-0 bg-red-500 text-white rounded-full p-1 m-1 hover:bg-red-600">
+                                <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                                </svg>
+                            </button>
+                        `;
+                        imagePreview.appendChild(div);
+                    };
+                    reader.readAsDataURL(file);
+                }
+            });
+        });
+
+        // Handle form submission
+        document.getElementById('createAdForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const token = localStorage.getItem('token');
+            if (!token) {
+                alert('Пожалуйста, войдите в систему');
+                window.location.href = '/login';
+                return;
+            }
+
+            const formData = new FormData();
+            formData.append('title', document.getElementById('title').value);
+            formData.append('description', document.getElementById('description').value);
+            formData.append('price', document.getElementById('price').value);
+            formData.append('location', document.getElementById('location').value);
+            formData.append('category_id', document.getElementById('category').value);
+
+            // Append all selected images
+            const imageFiles = document.getElementById('images').files;
+            console.log('Number of files selected:', imageFiles.length);
+            for (let i = 0; i < imageFiles.length; i++) {
+                console.log('Appending file:', imageFiles[i].name, 'size:', imageFiles[i].size);
+                formData.append('images', imageFiles[i]);
+            }
+
+            try {
+                console.log('Sending form data...');
+                const response = await fetch('/api/advertisements', {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: formData
+                });
+
+                console.log('Response status:', response.status);
+                const data = await response.json();
+                console.log('Response data:', data);
+
+                if (!response.ok) {
+                    throw new Error(data.error || 'Ошибка создания объявления');
+                }
+
+                window.location.href = '/';
+            } catch (error) {
+                console.error('Error:', error);
+                alert(error.message || 'Произошла ошибка при создании объявления');
+            }
+        });
+
+        // Initialize page
+        loadCategories();
+    </script>
+</body>
+</html> 
