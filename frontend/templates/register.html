@@ -73,37 +73,41 @@
     </main>
 
     <script>
-        document.getElementById('registerForm').addEventListener('submit', async (e) => {
-            e.preventDefault();
-            
-            const formData = {
-                email: document.getElementById('email').value,
-                name: document.getElementById('full_name').value,
-                password: document.getElementById('password').value,
-                phone: document.getElementById('phone').value
-            };
+    document.getElementById('registerForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        
+        const formData = {
+            email: document.getElementById('email').value,
+            name: document.getElementById('full_name').value,
+            password: document.getElementById('password').value,
+            phone: document.getElementById('phone').value
+        };
 
-            try {
-                const response = await fetch('/api/auth/register', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify(formData)
-                });
+        try {
+            const response = await fetch('/api/auth/register', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(formData)
+            });
 
-                const data = await response.json();
+            const data = await response.json();
 
-                if (response.ok) {
-                    localStorage.setItem('token', data.token);
-                    window.location.href = '/';
-                } else {
-                    alert(data.error || 'Ошибка регистрации');
-                }
-            } catch (error) {
-                alert('Произошла ошибка при регистрации');
+            if (response.ok) {
+                // Сохраняем сразу и token, и объект user
+                localStorage.setItem('token', data.token);
+                localStorage.setItem('user', JSON.stringify(data.user));
+                // Переходим на главную
+                window.location.href = '/';
+            } else {
+                alert(data.error || 'Ошибка регистрации');
             }
-        });
-    </script>
+        } catch (error) {
+            alert('Произошла ошибка при регистрации');
+        }
+    });
+</script>
+
 </body>
 </html> 

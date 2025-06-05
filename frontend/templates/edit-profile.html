@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Редактирование профиля - Доска объявлений</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100">
+    <nav class="bg-white shadow-lg">
+        <div class="max-w-6xl mx-auto px-4">
+            <div class="flex justify-between">
+                <div class="flex space-x-7">
+                    <div>
+                        <a href="/" class="flex items-center py-4">
+                            <span class="font-semibold text-gray-500 text-lg">Доска объявлений</span>
+                        </a>
+                    </div>
+                </div>
+                <div class="flex items-center">
+                    <a href="/" class="text-blue-600 hover:text-blue-800">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+                        </svg>
+                    </a>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <main class="max-w-4xl mx-auto mt-8 px-4">
+        <div class="bg-white rounded-lg shadow-lg p-6">
+            <h1 class="text-2xl font-semibold mb-6">Редактирование профиля</h1>
+            
+            <form id="editProfileForm" class="space-y-6">
+                <div>
+                    <label for="name" class="block text-sm font-medium text-gray-700">Имя</label>
+                    <input type="text" id="name" name="name" required
+                        class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                </div>
+
+                <div>
+                    <label for="email" class="block text-sm font-medium text-gray-700">Email адрес</label>
+                    <input type="email" id="email" name="email" required
+                        class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                </div>
+
+                <div>
+                    <label for="phone" class="block text-sm font-medium text-gray-700">Телефон</label>
+                    <input type="tel" id="phone" name="phone"
+                        class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                </div>
+
+                <div>
+                    <label for="currentPassword" class="block text-sm font-medium text-gray-700">Текущий пароль</label>
+                    <input type="password" id="currentPassword" name="currentPassword"
+                        class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                    <p class="mt-1 text-sm text-gray-500">Оставьте пустым, если не хотите менять пароль</p>
+                </div>
+
+                <div>
+                    <label for="newPassword" class="block text-sm font-medium text-gray-700">Новый пароль</label>
+                    <input type="password" id="newPassword" name="newPassword"
+                        class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                </div>
+
+                <div class="flex justify-end space-x-4">
+                    <a href="/users/:id" class="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50">
+                        Отмена
+                    </a>
+                    <button type="submit" class="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                        Сохранить изменения
+                    </button>
+                </div>
+            </form>
+        </div>
+    </main>
+
+    <script>
+        // Load user profile
+        async function loadUserProfile() {
+            const token = localStorage.getItem('token');
+            if (!token) {
+                alert('Пожалуйста, войдите в систему');
+                window.location.href = '/login';
+                return;
+            }
+
+            const user = JSON.parse(localStorage.getItem('user'));
+            try {
+                const response = await fetch(`/api/users/${user.id}`, {
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+                const data = await response.json();
+
+                // Fill form fields
+                document.getElementById('name').value = data.name;
+                document.getElementById('email').value = data.email;
+                document.getElementById('phone').value = data.phone || '';
+            } catch (error) {
+                console.error('Ошибка загрузки профиля:', error);
+                alert('Ошибка загрузки профиля');
+            }
+        }
+
+        // Handle form submission
+        document.getElementById('editProfileForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const token = localStorage.getItem('token');
+            if (!token) {
+                alert('Пожалуйста, войдите в систему');
+                window.location.href = '/login';
+                return;
+            }
+
+            const user = JSON.parse(localStorage.getItem('user'));
+            const formData = {
+                name: document.getElementById('name').value,
+                email: document.getElementById('email').value,
+                phone: document.getElementById('phone').value,
+                currentPassword: document.getElementById('currentPassword').value,
+                newPassword: document.getElementById('newPassword').value
+            };
+
+            try {
+                const response = await fetch(`/api/users/${user.id}`, {
+                    method: 'PUT',
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(formData)
+                });
+
+                if (!response.ok) {
+                    const data = await response.json();
+                    throw new Error(data.error || 'Ошибка обновления профиля');
+                }
+
+                const updatedUser = await response.json();
+                localStorage.setItem('user', JSON.stringify(updatedUser));
+                window.location.href = `/users/${user.id}`;
+            } catch (error) {
+                console.error('Ошибка:', error);
+                alert(error.message || 'Произошла ошибка при обновлении профиля');
+            }
+        });
+
+        // Initialize page
+        loadUserProfile();
+    </script>
+</body>
+</html> 

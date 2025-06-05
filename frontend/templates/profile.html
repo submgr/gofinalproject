@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Профиль пользователя - Доска объявлений</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100">
+    <nav class="bg-white shadow-lg">
+        <div class="max-w-6xl mx-auto px-4">
+            <div class="flex justify-between">
+                <div class="flex space-x-7">
+                    <div>
+                        <a href="/" class="flex items-center py-4">
+                            <span class="font-semibold text-gray-500 text-lg">Доска объявлений</span>
+                        </a>
+                    </div>
+                </div>
+                <div class="flex items-center">
+                    <a href="/" class="text-blue-600 hover:text-blue-800">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+                        </svg>
+                    </a>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <main class="max-w-6xl mx-auto mt-8 px-4">
+        <div class="bg-white rounded-lg shadow-lg p-6 mb-6">
+            <div id="userProfile">
+                <!-- User profile information will be loaded here -->
+            </div>
+        </div>
+
+        <div class="bg-white rounded-lg shadow-lg p-6">
+            <h2 class="text-2xl font-semibold mb-6">Объявления пользователя</h2>
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6" id="userAdvertisements">
+                <!-- User's advertisements will be loaded here -->
+            </div>
+        </div>
+    </main>
+
+    <script>
+        // Load user profile and advertisements
+        async function loadUserProfile() {
+            const userId = window.location.pathname.split('/').pop();
+            const currentUser = JSON.parse(localStorage.getItem('user'));
+            const isCurrentUser = currentUser && currentUser.id.toString() === userId;
+
+            try {
+                // Load user profile
+                const profileResponse = await fetch(`/api/users/${userId}`);
+                const user = await profileResponse.json();
+                
+                const profileDiv = document.getElementById('userProfile');
+                profileDiv.innerHTML = `
+                    <div class="flex items-center justify-between">
+                        <div class="flex items-center space-x-4">
+                            <div class="h-20 w-20 bg-blue-100 rounded-full flex items-center justify-center">
+                                <span class="text-2xl text-blue-600">${user.name.charAt(0).toUpperCase()}</span>
+                            </div>
+                            <div>
+                                <h1 class="text-2xl font-semibold">${user.name}</h1>
+                                <p class="text-gray-600">На сайте с ${new Date(user.created_at).toLocaleDateString('ru-RU')}</p>
+                            </div>
+                        </div>
+                        ${isCurrentUser ? `
+                            <a href="/users/${user.id}/edit" class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700">
+                                Редактировать профиль
+                            </a>
+                        ` : ''}
+                    </div>
+                `;
+
+                // Load user's advertisements
+                const adsResponse = await fetch(`/api/users/${userId}/advertisements`);
+                const ads = await adsResponse.json();
+                
+                const adsGrid = document.getElementById('userAdvertisements');
+                adsGrid.innerHTML = '';
+
+                ads.data.forEach(ad => {
+                    const card = document.createElement('div');
+                    card.className = 'border rounded-lg overflow-hidden hover:shadow-lg transition-shadow duration-200';
+                    card.innerHTML = `
+                        <a href="/advertisements/${ad.id}" class="block">
+                            ${ad.images && ad.images.length > 0 ? 
+                                `<img src="${ad.images[0].url.startsWith('/') ? ad.images[0].url : '/' + ad.images[0].url}" alt="${ad.title}" class="w-full h-48 object-cover" onerror="this.onerror=null; this.src='/static/no-image.png';">` :
+                                `<div class="w-full h-48 bg-gray-200 flex items-center justify-center">
+                                    <span class="text-gray-500">Нет изображения</span>
+                                </div>`
+                            }
+                            <div class="p-4">
+                                <h3 class="font-semibold text-lg mb-2">${ad.title}</h3>
+                                <p class="text-gray-600 mb-2 line-clamp-2">${ad.description || ''}</p>
+                                <div class="flex justify-between items-center">
+                                    <span class="text-blue-500 font-semibold">${ad.price} ₽</span>
+                                    <span class="text-gray-500">${ad.location || ''}</span>
+                                </div>
+                            </div>
+                        </a>
+                    `;
+                    adsGrid.appendChild(card);
+                });
+            } catch (error) {
+                console.error('Ошибка загрузки профиля:', error);
+            }
+        }
+
+        // Initialize page
+        loadUserProfile();
+    </script>
+</body>
+</html> 

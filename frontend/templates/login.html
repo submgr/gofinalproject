@@ -64,31 +64,52 @@
         document.getElementById('loginForm').addEventListener('submit', async (e) => {
             e.preventDefault();
             
-            const formData = {
-                email: document.getElementById('email').value,
-                password: document.getElementById('password').value
-            };
-
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+            
             try {
                 const response = await fetch('/api/auth/login', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json'
                     },
-                    body: JSON.stringify(formData)
+                    body: JSON.stringify({ email, password })
                 });
-
+                
                 const data = await response.json();
-
+                
                 if (response.ok) {
                     localStorage.setItem('token', data.token);
                     localStorage.setItem('user', JSON.stringify(data.user));
-                    window.location.href = '/';
+                    
+                    // Check if there's a redirect URL and message
+                    const redirectUrl = localStorage.getItem('redirectAfterLogin');
+                    const loginMessage = localStorage.getItem('loginMessage');
+                    
+                    // Clear the stored redirect and message
+                    localStorage.removeItem('redirectAfterLogin');
+                    localStorage.removeItem('loginMessage');
+                    
+                    if (redirectUrl) {
+                        window.location.href = redirectUrl;
+                    } else {
+                        window.location.href = '/';
+                    }
                 } else {
                     alert(data.error || 'Ошибка входа');
                 }
             } catch (error) {
+                console.error('Ошибка:', error);
                 alert('Произошла ошибка при входе');
+            }
+        });
+
+        // Check for login message on page load
+        window.addEventListener('load', () => {
+            const loginMessage = localStorage.getItem('loginMessage');
+            if (loginMessage) {
+                alert(loginMessage);
+                localStorage.removeItem('loginMessage');
             }
         });
     </script>

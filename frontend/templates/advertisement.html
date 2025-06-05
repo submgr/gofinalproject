@@ -75,6 +75,44 @@
             return { question, answer };
         }
 
+        // Check if current user is the owner of the advertisement
+        function isAdvertisementOwner(userId) {
+            const currentUser = JSON.parse(localStorage.getItem('user'));
+            return currentUser && currentUser.id === userId;
+        }
+
+        // Delete advertisement
+        async function deleteAdvertisement(adId) {
+            if (!confirm('Вы уверены, что хотите удалить это объявление?')) {
+                return;
+            }
+
+            const token = localStorage.getItem('token');
+            if (!token) {
+                alert('Пожалуйста, войдите в систему');
+                window.location.href = '/login';
+                return;
+            }
+
+            try {
+                const response = await fetch(`/api/advertisements/${adId}`, {
+                    method: 'DELETE',
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+
+                if (!response.ok) {
+                    throw new Error('Ошибка при удалении объявления');
+                }
+
+                window.location.href = '/';
+            } catch (error) {
+                console.error('Ошибка:', error);
+                alert(error.message || 'Произошла ошибка при удалении объявления');
+            }
+        }
+
         // Load advertisement details
         async function loadAdvertisement() {
             const adId = window.location.pathname.split('/').pop();
@@ -82,12 +120,26 @@
                 const response = await fetch(`/api/advertisements/${adId}`);
                 const ad = await response.json();
                 
+                const isOwner = isAdvertisementOwner(ad.user.id);
+                
                 const content = document.getElementById('advertisementContent');
                 content.innerHTML = `
                     <div class="space-y-6">
                         <div class="flex justify-between items-start">
                             <h1 class="text-2xl font-semibold">${ad.title}</h1>
-                            <span class="text-xl font-bold text-blue-600">${ad.price} ₽</span>
+                            <div class="flex items-center space-x-4">
+                                <span class="text-xl font-bold text-blue-600">${ad.price} ₽</span>
+                                ${isOwner ? `
+                                    <div class="flex space-x-2">
+                                        <a href="/advertisements/${ad.id}/edit" class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700">
+                                            Редактировать
+                                        </a>
+                                        <button onclick="deleteAdvertisement(${ad.id})" class="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700">
+                                            Удалить
+                                        </button>
+                                    </div>
+                                ` : ''}
+                            </div>
                         </div>
                         
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -121,10 +173,19 @@
                                     <h3 class="text-lg font-medium">Категория</h3>
                                     <p class="text-gray-600">${ad.category ? ad.category.name : 'Не указана'}</p>
                                 </div>
+
+                                <div>
+                                    <h3 class="text-lg font-medium">Продавец</h3>
+                                    <a href="/users/${ad.user.id}" class="text-blue-600 hover:text-blue-800">
+                                        ${ad.user.name}
+                                    </a>
+                                </div>
                                 
-                                <button onclick="showContactModal()" class="w-full px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700">
-                                    Показать контакты
-                                </button>
+                                ${!isOwner ? `
+                                    <button onclick="showContactModal()" class="w-full px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700">
+                                        Показать контакты
+                                    </button>
+                                ` : ''}
                             </div>
                         </div>
                     </div>

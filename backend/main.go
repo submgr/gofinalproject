@@ -46,8 +46,17 @@ func main() {
 	r.GET("/create-ad", func(c *gin.Context) {
 		c.HTML(http.StatusOK, "create-ad.html", nil)
 	})
+	r.GET("/advertisements/:id/edit", func(c *gin.Context) {
+		c.HTML(http.StatusOK, "edit-ad.html", nil)
+	})
 	r.GET("/advertisements/:id", func(c *gin.Context) {
 		c.HTML(http.StatusOK, "advertisement.html", nil)
+	})
+	r.GET("/users/:id", func(c *gin.Context) {
+		c.HTML(http.StatusOK, "profile.html", nil)
+	})
+	r.GET("/users/:id/edit", func(c *gin.Context) {
+		c.HTML(http.StatusOK, "edit-profile.html", nil)
 	})
 
 	// API routes
@@ -69,12 +78,15 @@ func main() {
 			protected.POST("/advertisements", api.CreateAdvertisement)
 			protected.PUT("/advertisements/:id", api.UpdateAdvertisement)
 			protected.DELETE("/advertisements/:id", api.DeleteAdvertisement)
+			protected.PUT("/users/:id", api.UpdateUserProfile)
 		}
 
 		// Public routes
 		apiGroup.GET("/advertisements", api.GetAdvertisements)
 		apiGroup.GET("/advertisements/:id", api.GetAdvertisement)
 		apiGroup.GET("/advertisements/:id/contact", api.GetAdvertisementContact)
+		apiGroup.GET("/users/:id", api.GetUserProfile)
+		apiGroup.GET("/users/:id/advertisements", api.GetUserAdvertisements)
 		apiGroup.GET("/categories", func(c *gin.Context) {
 			var categories []models.Category
 			if err := database.DB.Find(&categories).Error; err != nil {

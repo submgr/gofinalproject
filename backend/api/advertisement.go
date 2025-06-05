@@ -156,7 +156,7 @@ func UpdateAdvertisement(c *gin.Context) {
 	}
 
 	var req CreateAdvertisementRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
+	if err := c.ShouldBind(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
@@ -166,6 +166,42 @@ func UpdateAdvertisement(c *gin.Context) {
 	ad.Price = req.Price
 	ad.Location = req.Location
 	ad.CategoryID = req.CategoryID
+
+	// Handle image upload
+	form, err := c.MultipartForm()
+	if err != nil {
+		log.Printf("Error parsing multipart form: %v", err)
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Failed to parse form data: " + err.Error()})
+		return
+	}
+
+	if form.File != nil && len(form.File["images"]) > 0 {
+		uploadDir := "../storage/uploads"
+		if err := os.MkdirAll(uploadDir, 0755); err != nil {
+			log.Printf("Error creating upload directory: %v", err)
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create upload directory"})
+			return
+		}
+
+		for _, file := range form.File["images"] {
+			// Generate unique filename
+			filename := fmt.Sprintf("%d_%s", time.Now().UnixNano(), filepath.Base(file.Filename))
+			filepath := filepath.Join(uploadDir, filename)
+
+			// Save file
+			if err := c.SaveUploadedFile(file, filepath); err != nil {
+				log.Printf("Error saving file: %v", err)
+				c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to save image: " + err.Error()})
+				return
+			}
+
+			// Create image record
+			image := models.Image{
+				URL: "/storage/uploads/" + filename,
+			}
+			ad.Images = append(ad.Images, image)
+		}
+	}
 
 	if err := database.DB.Save(&ad).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update advertisement"})
