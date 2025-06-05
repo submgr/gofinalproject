@@ -50,7 +50,6 @@
                 </div>
                 <div id="contactInfo" class="hidden">
                     <p class="text-sm text-gray-600 mb-2">Имя: <span id="contactName" class="font-medium"></span></p>
-                    <p class="text-sm text-gray-600 mb-2">Email: <span id="contactEmail" class="font-medium"></span></p>
                     <p class="text-sm text-gray-600">Телефон: <span id="contactPhone" class="font-medium"></span></p>
                 </div>
                 <div class="flex justify-end space-x-3 mt-4">
@@ -221,9 +220,9 @@
                     const data = await response.json();
                     
                     document.getElementById('contactName').textContent = data.name;
-                    document.getElementById('contactEmail').textContent = data.email;
                     document.getElementById('contactPhone').textContent = data.phone || 'Не указан';
                     document.getElementById('contactInfo').classList.remove('hidden');
+                    document.getElementById('showContacts').classList.add('hidden');
                 } catch (error) {
                     alert('Ошибка получения контактной информации');
                 }

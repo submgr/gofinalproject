@@ -24,6 +24,13 @@ func InitDB() {
 		log.Fatal("Failed to migrate database:", err)
 	}
 
+	// Ensure the advertisement_id column exists in the images table
+	if !DB.Migrator().HasColumn(&models.Image{}, "AdvertisementID") {
+		if err := DB.Migrator().AddColumn(&models.Image{}, "AdvertisementID"); err != nil {
+			log.Fatal("Failed to add AdvertisementID column:", err)
+		}
+	}
+
 	// Initialize categories if they don't exist
 	var count int64
 	DB.Model(&models.Category{}).Count(&count)

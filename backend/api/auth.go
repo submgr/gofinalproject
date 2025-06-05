@@ -1,12 +1,16 @@
 package api
 
 import (
+	"fmt"
+	"log"
+	"math/rand"
 	"net/http"
 	"os"
 	"time"
 
 	"classifieds/database"
 	"classifieds/models"
+	"classifieds/utils"
 
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt/v5"
@@ -25,6 +29,22 @@ type LoginRequest struct {
 	Email    string `json:"email" binding:"required,email"`
 	Password string `json:"password" binding:"required"`
 }
+
+type RecoverPasswordRequest struct {
+	Email string `json:"email" binding:"required,email"`
+}
+
+type ResetPasswordRequest struct {
+	Email       string `json:"email" binding:"required,email"`
+	Code        string `json:"code" binding:"required,len=6"`
+	NewPassword string `json:"newPassword" binding:"required,min=6"`
+}
+
+// Store recovery codes in memory (in production, use Redis or similar)
+var recoveryCodes = make(map[string]struct {
+	code      string
+	timestamp time.Time
+})
 
 // Регистрация нового пользователя: теперь возвращает JWT и данные юзера
 func Register(c *gin.Context) {
@@ -128,4 +148,92 @@ func Login(c *gin.Context) {
 			"name":  user.Name,
 		},
 	})
+}
+
+func RecoverPassword(c *gin.Context) {
+	var req RecoverPasswordRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	// Check if user exists
+	var user models.User
+	if err := database.DB.Where("email = ?", req.Email).First(&user).Error; err != nil {
+		// Don't reveal if email exists or not
+		c.JSON(http.StatusOK, gin.H{"message": "Если ваш email зарегистрирован, вы получите код восстановления"})
+		return
+	}
+
+	// Generate 6-digit code
+	code := fmt.Sprintf("%06d", rand.Intn(1000000))
+	
+	// Store code with timestamp
+	recoveryCodes[req.Email] = struct {
+		code      string
+		timestamp time.Time
+	}{
+		code:      code,
+		timestamp: time.Now(),
+	}
+
+	// Send email
+	if err := utils.SendRecoveryCode(req.Email, code); err != nil {
+		log.Printf("Failed to send recovery code to %s: %v", req.Email, err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Не удалось отправить код восстановления"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "Код восстановления отправлен"})
+}
+
+func ResetPassword(c *gin.Context) {
+	var req ResetPasswordRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	// Check if code exists and is valid
+	recoveryData, exists := recoveryCodes[req.Email]
+	if !exists {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid or expired code"})
+		return
+	}
+
+	// Check if code is expired (15 minutes)
+	if time.Since(recoveryData.timestamp) > 15*time.Minute {
+		delete(recoveryCodes, req.Email)
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Code has expired"})
+		return
+	}
+
+	// Check if code matches
+	if recoveryData.code != req.Code {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid code"})
+		return
+	}
+
+	// Update password
+	var user models.User
+	if err := database.DB.Where("email = ?", req.Email).First(&user).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "User not found"})
+		return
+	}
+
+	user.Password = req.NewPassword
+	if err := user.HashPassword(); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to hash password"})
+		return
+	}
+
+	if err := database.DB.Save(&user).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update password"})
+		return
+	}
+
+	// Delete used code
+	delete(recoveryCodes, req.Email)
+
+	c.JSON(http.StatusOK, gin.H{"message": "Password updated successfully"})
 }

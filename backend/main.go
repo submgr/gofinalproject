@@ -58,6 +58,9 @@ func main() {
 	r.GET("/users/:id/edit", func(c *gin.Context) {
 		c.HTML(http.StatusOK, "edit-profile.html", nil)
 	})
+	r.GET("/recover-password", func(c *gin.Context) {
+		c.HTML(http.StatusOK, "recover-password.html", nil)
+	})
 
 	// API routes
 	apiGroup := r.Group("/api")
@@ -70,6 +73,8 @@ func main() {
 		// Auth routes
 		apiGroup.POST("/auth/register", api.Register)
 		apiGroup.POST("/auth/login", api.Login)
+		apiGroup.POST("/auth/recover-password", api.RecoverPassword)
+		apiGroup.POST("/auth/reset-password", api.ResetPassword)
 
 		// Protected routes
 		protected := apiGroup.Group("")

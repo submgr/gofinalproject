@@ -1,6 +1,7 @@
 package api
 
 import (
+	"encoding/json"
 	"fmt"
 	"log"
 	"net/http"
@@ -21,6 +22,15 @@ type CreateAdvertisementRequest struct {
 	Price       float64 `form:"price" binding:"required"`
 	Location    string  `form:"location"`
 	CategoryID  uint    `form:"category_id" binding:"required"`
+}
+
+type UpdateAdvertisementRequest struct {
+	Title       string  `form:"title" binding:"required"`
+	Description string  `form:"description"`
+	Price       float64 `form:"price" binding:"required"`
+	Location    string  `form:"location"`
+	CategoryID  uint    `form:"category_id" binding:"required"`
+	DeletedImages string `form:"deleted_images"`
 }
 
 func CreateAdvertisement(c *gin.Context) {
@@ -75,7 +85,8 @@ func CreateAdvertisement(c *gin.Context) {
 
 			// Create image record
 			image := models.Image{
-				URL: "/storage/uploads/" + filename,
+				URL:             "/storage/uploads/" + filename,
+				AdvertisementID: ad.ID,
 			}
 			ad.Images = append(ad.Images, image)
 		}
@@ -148,58 +159,68 @@ func UpdateAdvertisement(c *gin.Context) {
 		return
 	}
 
-	// Check ownership
+	// Check if user is the owner
 	userID := c.GetUint("user_id")
 	if ad.UserID != userID {
 		c.JSON(http.StatusForbidden, gin.H{"error": "Not authorized to update this advertisement"})
 		return
 	}
 
-	var req CreateAdvertisementRequest
+	var req UpdateAdvertisementRequest
 	if err := c.ShouldBind(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
+	// Handle deleted images
+	if req.DeletedImages != "" {
+		var deletedImageIds []uint
+		if err := json.Unmarshal([]byte(req.DeletedImages), &deletedImageIds); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid deleted images format"})
+			return
+		}
+
+		// Delete images from storage and database
+		for _, imageID := range deletedImageIds {
+			var image models.Image
+			if err := database.DB.First(&image, imageID).Error; err != nil {
+				continue
+			}
+			// Delete file from storage
+			if err := os.Remove("." + image.URL); err != nil {
+				log.Printf("Error deleting image file: %v", err)
+			}
+			// Delete from database
+			database.DB.Delete(&image)
+		}
+	}
+
+	// Update advertisement
 	ad.Title = req.Title
 	ad.Description = req.Description
 	ad.Price = req.Price
 	ad.Location = req.Location
 	ad.CategoryID = req.CategoryID
 
-	// Handle image upload
+	// Handle new images
 	form, err := c.MultipartForm()
-	if err != nil {
-		log.Printf("Error parsing multipart form: %v", err)
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Failed to parse form data: " + err.Error()})
-		return
-	}
+	if err == nil {
+		if files := form.File["images"]; len(files) > 0 {
+			for _, file := range files {
+				filename := fmt.Sprintf("%d_%s", time.Now().UnixNano(), file.Filename)
+				path := filepath.Join("storage", "images", filename)
+				
+				if err := c.SaveUploadedFile(file, path); err != nil {
+					c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to save image"})
+					return
+				}
 
-	if form.File != nil && len(form.File["images"]) > 0 {
-		uploadDir := "../storage/uploads"
-		if err := os.MkdirAll(uploadDir, 0755); err != nil {
-			log.Printf("Error creating upload directory: %v", err)
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create upload directory"})
-			return
-		}
-
-		for _, file := range form.File["images"] {
-			// Generate unique filename
-			filename := fmt.Sprintf("%d_%s", time.Now().UnixNano(), filepath.Base(file.Filename))
-			filepath := filepath.Join(uploadDir, filename)
-
-			// Save file
-			if err := c.SaveUploadedFile(file, filepath); err != nil {
-				log.Printf("Error saving file: %v", err)
-				c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to save image: " + err.Error()})
-				return
+				image := models.Image{
+					URL:             "/storage/images/" + filename,
+					AdvertisementID: ad.ID,
+				}
+				database.DB.Create(&image)
 			}
-
-			// Create image record
-			image := models.Image{
-				URL: "/storage/uploads/" + filename,
-			}
-			ad.Images = append(ad.Images, image)
 		}
 	}
 

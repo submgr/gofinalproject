@@ -1,0 +1,2 @@
+ALTER TABLE images ADD COLUMN advertisement_id BIGINT UNSIGNED;
+ALTER TABLE images ADD CONSTRAINT fk_images_advertisement FOREIGN KEY (advertisement_id) REFERENCES advertisements(id) ON DELETE CASCADE; 

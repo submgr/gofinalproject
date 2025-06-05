@@ -65,9 +65,9 @@
                     </select>
                 </div>
 
-                <div>
-                    <label class="block text-sm font-medium text-gray-700">Текущие фотографии</label>
-                    <div id="currentImages" class="mt-4 grid grid-cols-3 gap-4">
+                <div class="mb-6">
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Текущие изображения</label>
+                    <div id="currentImages" class="grid grid-cols-2 md:grid-cols-3 gap-4 mb-4">
                         <!-- Current images will be loaded here -->
                     </div>
                 </div>
@@ -125,7 +125,6 @@
 
         // Load advertisement details
         async function loadAdvertisement() {
-            const adId = window.location.pathname.split('/')[2];
             const token = localStorage.getItem('token');
             if (!token) {
                 alert('Пожалуйста, войдите в систему');
@@ -133,6 +132,7 @@
                 return;
             }
 
+            const adId = window.location.pathname.split('/').pop();
             try {
                 const response = await fetch(`/api/advertisements/${adId}`, {
                     headers: {
@@ -143,29 +143,41 @@
 
                 // Fill form fields
                 document.getElementById('title').value = ad.title;
-                document.getElementById('description').value = ad.description || '';
+                document.getElementById('description').value = ad.description;
                 document.getElementById('price').value = ad.price;
-                document.getElementById('location').value = ad.location || '';
+                document.getElementById('location').value = ad.location;
                 document.getElementById('category').value = ad.category_id;
 
                 // Display current images
-                const currentImages = document.getElementById('currentImages');
-                if (ad.images && ad.images.length > 0) {
-                    currentImages.innerHTML = ad.images.map(img => `
-                        <div class="relative">
-                            <img src="${img.url}" alt="Current image" class="h-32 w-full object-cover rounded-lg">
-                            <button type="button" onclick="deleteImage(${img.id})" class="absolute top-0 right-0 bg-red-500 text-white rounded-full p-1 m-1 hover:bg-red-600">
-                                <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-                                </svg>
-                            </button>
-                        </div>
-                    `).join('');
-                } else {
-                    currentImages.innerHTML = '<p class="text-gray-500">Нет изображений</p>';
-                }
+                const currentImagesDiv = document.getElementById('currentImages');
+                currentImagesDiv.innerHTML = '';
+                ad.images.forEach(image => {
+                    const imageContainer = document.createElement('div');
+                    imageContainer.className = 'relative group';
+                    imageContainer.innerHTML = `
+                        <img src="${image.url.startsWith('/') ? image.url : '/' + image.url}" alt="Advertisement image" class="w-full h-32 object-cover rounded">
+                        <button type="button" class="absolute top-2 right-2 bg-red-500 text-white p-1 rounded-full opacity-0 group-hover:opacity-100 transition-opacity" onclick="deleteImage(${image.id})">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                            </svg>
+                        </button>
+                    `;
+                    currentImagesDiv.appendChild(imageContainer);
+                });
             } catch (error) {
                 console.error('Ошибка загрузки объявления:', error);
+                alert('Ошибка загрузки объявления');
+            }
+        }
+
+        // Track deleted images
+        const deletedImageIds = new Set();
+
+        function deleteImage(imageId) {
+            if (confirm('Вы уверены, что хотите удалить это изображение?')) {
+                deletedImageIds.add(imageId);
+                const imageElement = event.target.closest('.relative');
+                imageElement.remove();
             }
         }
 
@@ -207,19 +219,22 @@
                 return;
             }
 
-            const adId = window.location.pathname.split('/')[2];
+            const adId = window.location.pathname.split('/').pop();
             const formData = new FormData();
             formData.append('title', document.getElementById('title').value);
             formData.append('description', document.getElementById('description').value);
             formData.append('price', document.getElementById('price').value);
             formData.append('location', document.getElementById('location').value);
             formData.append('category_id', document.getElementById('category').value);
-
-            // Append new images
-            const imageFiles = document.getElementById('images').files;
-            for (let i = 0; i < imageFiles.length; i++) {
-                formData.append('images', imageFiles[i]);
+            
+            // Add new images
+            const imageInput = document.getElementById('images');
+            for (let i = 0; i < imageInput.files.length; i++) {
+                formData.append('images', imageInput.files[i]);
             }
+
+            // Add deleted image IDs
+            formData.append('deleted_images', JSON.stringify(Array.from(deletedImageIds)));
 
             try {
                 const response = await fetch(`/api/advertisements/${adId}`, {
@@ -231,7 +246,8 @@
                 });
 
                 if (!response.ok) {
-                    throw new Error('Ошибка обновления объявления');
+                    const data = await response.json();
+                    throw new Error(data.error || 'Ошибка обновления объявления');
                 }
 
                 window.location.href = `/advertisements/${adId}`;

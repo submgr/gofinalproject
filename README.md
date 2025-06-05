@@ -1,77 +1,155 @@
-# Classifieds Platform
+# Доска объявлений
 
-A modern classified advertisements platform built with Go and Tailwind CSS.
+## Аннотация
+Данный проект представляет собой веб-приложение "Доска объявлений", разработанное в рамках курсового проекта. Приложение позволяет пользователям размещать, просматривать и управлять объявлениями о продаже товаров и услуг.
 
-## Features
+## Содержание
+1. [Техническое задание](#техническое-задание)
+2. [Архитектура проекта](#архитектура-проекта)
+3. [Технологический стек](#технологический-стек)
+4. [Установка и запуск](#установка-и-запуск)
+5. [Функциональные возможности](#функциональные-возможности)
+6. [API документация](#api-документация)
+7. [Структура базы данных](#структура-базы-данных)
 
-- User authentication and authorization
-- Advertisement management
-- Category system
-- Image upload support
-- Search and filtering
-- Responsive design with Tailwind CSS
+## Техническое задание
 
-## Prerequisites
+### Цель проекта
+Разработка веб-приложения для размещения и управления объявлениями с возможностью регистрации пользователей, загрузки изображений и управления контентом.
 
-- Go 1.21 or higher
-- SQLite3
+### Основные требования
+- Регистрация и авторизация пользователей
+- Создание, редактирование и удаление объявлений
+- Загрузка и управление изображениями
+- Категоризация объявлений
+- Поиск и фильтрация объявлений
+- Профили пользователей
+- Восстановление пароля
 
-## Project Structure
+## Архитектура проекта
 
+### Структура проекта
 ```
-.
-├── backend/
-│   ├── api/         # API handlers
-│   ├── models/      # Database models
-│   ├── database/    # Database configuration
-│   └── middleware/  # Middleware functions
-└── frontend/
-    ├── static/      # Static assets
-    └── templates/   # HTML templates
+├── backend/           # Серверная часть
+│   ├── api/          # API endpoints
+│   ├── database/     # Работа с базой данных
+│   ├── models/       # Модели данных
+│   └── utils/        # Вспомогательные функции
+├── frontend/         # Клиентская часть
+│   ├── static/       # Статические файлы
+│   └── templates/    # HTML шаблоны
+└── storage/         # Хранилище файлов
 ```
 
-## Setup and Running
+### Компоненты системы
+- Backend: REST API на Go (Gin framework)
+- Frontend: HTML, CSS, JavaScript
+- База данных: SQLite
+- Аутентификация: JWT
 
-1. Clone the repository:
+## Технологический стек
+
+### Backend
+- Go 1.21+
+- Gin Web Framework
+- GORM (ORM)
+- JWT для аутентификации
+- SQLite
+
+### Frontend
+- HTML5
+- CSS3
+- JavaScript (ES6+)
+- Bootstrap 5
+
+## Установка и запуск
+
+### Требования
+- Go 1.21 или выше
+- SQLite
+- Git
+
+### Шаги установки
+1. Клонировать репозиторий:
 ```bash
-git clone <repository-url>
+git clone https://github.com/yourusername/classifieds.git
 cd classifieds
 ```
 
-2. Install dependencies:
+2. Установить зависимости:
 ```bash
 cd backend
-go mod tidy
+go mod download
 ```
 
-3. Create a `.env` file in the backend directory:
-```bash
-PORT=8080
+3. Настроить переменные окружения:
+Создать файл `.env` в директории `backend` со следующим содержимым:
+```
 JWT_SECRET=your-secret-key
+SMTP_HOST=smtp.gmail.com
+SMTP_FROM=your-email@gmail.com
+SMTP_USER=your-email@gmail.com
+SMTP_PASS=your-app-password
 ```
 
-4. Run the application:
+4. Запустить приложение:
 ```bash
 go run main.go
 ```
 
-The application will be available at `http://localhost:8080`
+## Функциональные возможности
 
-## API Endpoints
+### Пользовательский функционал
+- Регистрация и авторизация
+- Восстановление пароля
+- Управление профилем
+- Просмотр объявлений
+- Создание объявлений
+- Редактирование объявлений
+- Удаление объявлений
+- Загрузка изображений
 
-- `GET /api/health` - Health check endpoint
-- `POST /api/auth/register` - User registration
-- `POST /api/auth/login` - User login
-- `GET /api/advertisements` - List advertisements
-- `POST /api/advertisements` - Create advertisement
-- `GET /api/advertisements/:id` - Get advertisement details
-- `PUT /api/advertisements/:id` - Update advertisement
-- `DELETE /api/advertisements/:id` - Delete advertisement
+### Административный функционал
+- Управление категориями
+- Модерация объявлений
+- Управление пользователями
 
-## Contributing
+## API документация
 
-1. Fork the repository
-2. Create your feature branch
-3. Commit your changes
-4. Push to the branch
-5. Create a new Pull Request 
+### Аутентификация
+- POST /api/auth/register - Регистрация
+- POST /api/auth/login - Вход
+- POST /api/auth/recover-password - Восстановление пароля
+- POST /api/auth/reset-password - Сброс пароля
+
+### Объявления
+- GET /api/advertisements - Получение списка объявлений
+- POST /api/advertisements - Создание объявления
+- GET /api/advertisements/:id - Получение объявления
+- PUT /api/advertisements/:id - Обновление объявления
+- DELETE /api/advertisements/:id - Удаление объявления
+
+### Пользователи
+- GET /api/users/:id - Получение профиля
+- PUT /api/users/:id - Обновление профиля
+- GET /api/users/:id/advertisements - Получение объявлений пользователя
+
+## Структура базы данных
+
+### Таблицы
+- users - Пользователи
+- advertisements - Объявления
+- categories - Категории
+- images - Изображения
+
+### Связи
+- Объявления принадлежат пользователям (один-ко-многим)
+- Объявления относятся к категориям (один-ко-многим)
+- Изображения принадлежат объявлениям (один-ко-многим)
+
+## Безопасность
+- Хеширование паролей
+- JWT аутентификация
+- Защита от SQL-инъекций
+- Валидация входных данных
+- Безопасная обработка файлов
