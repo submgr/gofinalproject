@@ -51,7 +51,7 @@ func CreateAdvertisement(c *gin.Context) {
 		Status:      "active",
 	}
 
-	// Handle image upload
+	// обрабатываем загрузку изображения
 	form, err := c.MultipartForm()
 	if err != nil {
 		log.Printf("Error parsing multipart form: %v", err)
@@ -71,11 +71,11 @@ func CreateAdvertisement(c *gin.Context) {
 
 		for _, file := range form.File["images"] {
 			log.Printf("Processing file: %s, size: %d", file.Filename, file.Size)
-			// Generate unique filename
+			// генерируем уникальное имя файла
 			filename := fmt.Sprintf("%d_%s", time.Now().UnixNano(), filepath.Base(file.Filename))
 			filepath := filepath.Join(uploadDir, filename)
 
-			// Save file
+			// сохраняем файл
 			if err := c.SaveUploadedFile(file, filepath); err != nil {
 				log.Printf("Error saving file: %v", err)
 				c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to save image: " + err.Error()})
@@ -83,7 +83,7 @@ func CreateAdvertisement(c *gin.Context) {
 			}
 			log.Printf("File saved successfully at: %s", filepath)
 
-			// Create image record
+			// создаем запись изображения
 			image := models.Image{
 				URL:             "/storage/uploads/" + filename,
 				AdvertisementID: ad.ID,
@@ -109,7 +109,7 @@ func GetAdvertisements(c *gin.Context) {
 		return db.Select("id, name, email")
 	}).Preload("Images")
 
-	// Apply filters
+	// применяем фильтры
 	if categoryID := c.Query("category_id"); categoryID != "" {
 		query = query.Where("category_id = ?", categoryID)
 	}
@@ -139,14 +139,10 @@ func GetAdvertisements(c *gin.Context) {
 func GetAdvertisement(c *gin.Context) {
 	id := c.Param("id")
 	var ad models.Advertisement
-
-	if err := database.DB.Preload("Category").Preload("User", func(db *gorm.DB) *gorm.DB {
-		return db.Select("id, name, email")
-	}).Preload("Images").First(&ad, id).Error; err != nil {
+	if err := database.DB.Preload("Category").Preload("User").Preload("Images").Where("id = ?", id).First(&ad).Error; err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "Advertisement not found"})
 		return
 	}
-
 	c.JSON(http.StatusOK, ad)
 }
 
@@ -159,7 +155,7 @@ func UpdateAdvertisement(c *gin.Context) {
 		return
 	}
 
-	// Check if user is the owner
+	// проверяем является ли пользователь владельцем
 	userID := c.GetUint("user_id")
 	if ad.UserID != userID {
 		c.JSON(http.StatusForbidden, gin.H{"error": "Not authorized to update this advertisement"})
@@ -172,7 +168,7 @@ func UpdateAdvertisement(c *gin.Context) {
 		return
 	}
 
-	// Handle deleted images
+	// обрабатываем удаленные изображения
 	if req.DeletedImages != "" {
 		var deletedImageIds []uint
 		if err := json.Unmarshal([]byte(req.DeletedImages), &deletedImageIds); err != nil {
@@ -180,46 +176,63 @@ func UpdateAdvertisement(c *gin.Context) {
 			return
 		}
 
-		// Delete images from storage and database
+		// удаляем изображения из хранилища и базы данных
 		for _, imageID := range deletedImageIds {
 			var image models.Image
 			if err := database.DB.First(&image, imageID).Error; err != nil {
 				continue
 			}
-			// Delete file from storage
+			// удаляем файл из хранилища
 			if err := os.Remove("." + image.URL); err != nil {
 				log.Printf("Error deleting image file: %v", err)
 			}
-			// Delete from database
+			// удаляем из базы данных
 			database.DB.Delete(&image)
 		}
 	}
 
-	// Update advertisement
+	// обновляем объявление
 	ad.Title = req.Title
 	ad.Description = req.Description
 	ad.Price = req.Price
 	ad.Location = req.Location
 	ad.CategoryID = req.CategoryID
 
-	// Handle new images
+	// обрабатываем новые изображения
 	form, err := c.MultipartForm()
 	if err == nil {
 		if files := form.File["images"]; len(files) > 0 {
+			uploadDir := "../storage/uploads"
+			if err := os.MkdirAll(uploadDir, 0755); err != nil {
+				log.Printf("Error creating upload directory: %v", err)
+				c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create upload directory"})
+				return
+			}
+
 			for _, file := range files {
-				filename := fmt.Sprintf("%d_%s", time.Now().UnixNano(), file.Filename)
-				path := filepath.Join("storage", "images", filename)
-				
-				if err := c.SaveUploadedFile(file, path); err != nil {
-					c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to save image"})
+				log.Printf("Processing file: %s, size: %d", file.Filename, file.Size)
+				// генерируем уникальное имя файла
+				filename := fmt.Sprintf("%d_%s", time.Now().UnixNano(), filepath.Base(file.Filename))
+				filepath := filepath.Join(uploadDir, filename)
+
+				// сохраняем файл
+				if err := c.SaveUploadedFile(file, filepath); err != nil {
+					log.Printf("Error saving file: %v", err)
+					c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to save image: " + err.Error()})
 					return
 				}
+				log.Printf("File saved successfully at: %s", filepath)
 
+				// создаем запись изображения
 				image := models.Image{
-					URL:             "/storage/images/" + filename,
+					URL:             "/storage/uploads/" + filename,
 					AdvertisementID: ad.ID,
 				}
-				database.DB.Create(&image)
+				if err := database.DB.Create(&image).Error; err != nil {
+					log.Printf("Error creating image record: %v", err)
+					c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to save image record"})
+					return
+				}
 			}
 		}
 	}
@@ -241,7 +254,7 @@ func DeleteAdvertisement(c *gin.Context) {
 		return
 	}
 
-	// Check ownership
+	// проверяем владельца
 	userID := c.GetUint("user_id")
 	if ad.UserID != userID {
 		c.JSON(http.StatusForbidden, gin.H{"error": "Not authorized to delete this advertisement"})

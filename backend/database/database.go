@@ -18,20 +18,20 @@ func InitDB() {
 		log.Fatal("Failed to connect to database:", err)
 	}
 
-	// Auto migrate the schema
+	// автоматически мигрируем схему
 	err = DB.AutoMigrate(&models.User{}, &models.Category{}, &models.Advertisement{}, &models.Image{})
 	if err != nil {
 		log.Fatal("Failed to migrate database:", err)
 	}
 
-	// Ensure the advertisement_id column exists in the images table
+	// убеждаемся что колонка advertisement_id существует в таблице images
 	if !DB.Migrator().HasColumn(&models.Image{}, "AdvertisementID") {
 		if err := DB.Migrator().AddColumn(&models.Image{}, "AdvertisementID"); err != nil {
 			log.Fatal("Failed to add AdvertisementID column:", err)
 		}
 	}
 
-	// Initialize categories if they don't exist
+	// инициализируем категории если они не существуют
 	var count int64
 	DB.Model(&models.Category{}).Count(&count)
 	if count == 0 {
@@ -50,7 +50,7 @@ func InitDB() {
 		DB.Create(&categories)
 	}
 
-	// Create uploads directory if it doesn't exist
+	// создаем директорию для загрузок если она не существует
 	uploadDir := "../storage/uploads"
 	if err := os.MkdirAll(uploadDir, 0755); err != nil {
 		log.Fatal("Failed to create uploads directory:", err)

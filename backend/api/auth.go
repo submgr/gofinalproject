@@ -40,7 +40,6 @@ type ResetPasswordRequest struct {
 	NewPassword string `json:"newPassword" binding:"required,min=6"`
 }
 
-// Store recovery codes in memory (in production, use Redis or similar)
 var recoveryCodes = make(map[string]struct {
 	code      string
 	timestamp time.Time
@@ -157,18 +156,18 @@ func RecoverPassword(c *gin.Context) {
 		return
 	}
 
-	// Check if user exists
+	// польхователь существкет?
 	var user models.User
 	if err := database.DB.Where("email = ?", req.Email).First(&user).Error; err != nil {
-		// Don't reveal if email exists or not
+		// скроем информацию от пользователя
 		c.JSON(http.StatusOK, gin.H{"message": "Если ваш email зарегистрирован, вы получите код восстановления"})
 		return
 	}
 
-	// Generate 6-digit code
+	//6-ый код
 	code := fmt.Sprintf("%06d", rand.Intn(1000000))
 	
-	// Store code with timestamp
+	// код с таймстемпом
 	recoveryCodes[req.Email] = struct {
 		code      string
 		timestamp time.Time
@@ -177,7 +176,7 @@ func RecoverPassword(c *gin.Context) {
 		timestamp: time.Now(),
 	}
 
-	// Send email
+	// отправка письма
 	if err := utils.SendRecoveryCode(req.Email, code); err != nil {
 		log.Printf("Failed to send recovery code to %s: %v", req.Email, err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Не удалось отправить код восстановления"})
@@ -194,7 +193,7 @@ func ResetPassword(c *gin.Context) {
 		return
 	}
 
-	// Check if code exists and is valid
+	// существует ли код
 	recoveryData, exists := recoveryCodes[req.Email]
 	if !exists {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid or expired code"})

@@ -93,7 +93,7 @@
                 </div>
 
                 <div class="flex justify-end space-x-4">
-                    <a href="/advertisements/:id" class="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50">
+                    <a id="cancelButton" href="#" class="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50">
                         Отмена
                     </a>
                     <button type="submit" class="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
@@ -132,41 +132,56 @@
                 return;
             }
 
-            const adId = window.location.pathname.split('/').pop();
+            // Extract ID from URL like /advertisements/123/edit
+            const pathParts = window.location.pathname.split('/');
+            const adId = pathParts[pathParts.length - 2]; // Get the ID before 'edit'
+            console.log('Loading advertisement with ID:', adId);
+
             try {
                 const response = await fetch(`/api/advertisements/${adId}`, {
                     headers: {
                         'Authorization': `Bearer ${token}`
                     }
                 });
+
+                if (!response.ok) {
+                    const data = await response.json();
+                    throw new Error(data.error || 'Ошибка загрузки объявления');
+                }
+
                 const ad = await response.json();
 
                 // Fill form fields
                 document.getElementById('title').value = ad.title;
-                document.getElementById('description').value = ad.description;
+                document.getElementById('description').value = ad.description || '';
                 document.getElementById('price').value = ad.price;
-                document.getElementById('location').value = ad.location;
+                document.getElementById('location').value = ad.location || '';
                 document.getElementById('category').value = ad.category_id;
 
                 // Display current images
                 const currentImagesDiv = document.getElementById('currentImages');
                 currentImagesDiv.innerHTML = '';
-                ad.images.forEach(image => {
-                    const imageContainer = document.createElement('div');
-                    imageContainer.className = 'relative group';
-                    imageContainer.innerHTML = `
-                        <img src="${image.url.startsWith('/') ? image.url : '/' + image.url}" alt="Advertisement image" class="w-full h-32 object-cover rounded">
-                        <button type="button" class="absolute top-2 right-2 bg-red-500 text-white p-1 rounded-full opacity-0 group-hover:opacity-100 transition-opacity" onclick="deleteImage(${image.id})">
-                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-                            </svg>
-                        </button>
-                    `;
-                    currentImagesDiv.appendChild(imageContainer);
-                });
+                if (ad.images && ad.images.length > 0) {
+                    ad.images.forEach(image => {
+                        const imageContainer = document.createElement('div');
+                        imageContainer.className = 'relative group';
+                        imageContainer.innerHTML = `
+                            <img src="${image.url.startsWith('/') ? image.url : '/' + image.url}" alt="Advertisement image" class="w-full h-32 object-cover rounded">
+                            <button type="button" class="absolute top-2 right-2 bg-red-500 text-white p-1 rounded-full opacity-0 group-hover:opacity-100 transition-opacity" onclick="deleteImage(${image.id})">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                                </svg>
+                            </button>
+                        `;
+                        currentImagesDiv.appendChild(imageContainer);
+                    });
+                } else {
+                    currentImagesDiv.innerHTML = '<p class="text-gray-500">Нет изображений</p>';
+                }
             } catch (error) {
                 console.error('Ошибка загрузки объявления:', error);
-                alert('Ошибка загрузки объявления');
+                alert(error.message || 'Ошибка загрузки объявления');
+                window.location.href = '/';
             }
         }
 
@@ -219,7 +234,11 @@
                 return;
             }
 
-            const adId = window.location.pathname.split('/').pop();
+            // Get the correct advertisement ID from the URL
+            const pathParts = window.location.pathname.split('/');
+            const adId = pathParts[pathParts.length - 2];
+            console.log('Updating advertisement with ID:', adId);
+
             const formData = new FormData();
             formData.append('title', document.getElementById('title').value);
             formData.append('description', document.getElementById('description').value);
@@ -260,6 +279,11 @@
         // Initialize page
         loadCategories();
         loadAdvertisement();
+
+        // Set cancel button URL
+        const pathParts = window.location.pathname.split('/');
+        const adId = pathParts[pathParts.length - 2];
+        document.getElementById('cancelButton').href = `/advertisements/${adId}`;
     </script>
 </body>
 </html> 

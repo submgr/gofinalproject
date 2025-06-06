@@ -77,7 +77,6 @@
     </main>
 
     <script>
-        // Load user profile
         async function loadUserProfile() {
             const token = localStorage.getItem('token');
             if (!token) {
@@ -95,7 +94,6 @@
                 });
                 const data = await response.json();
 
-                // Fill form fields
                 document.getElementById('name').value = data.name;
                 document.getElementById('email').value = data.email;
                 document.getElementById('phone').value = data.phone || '';
@@ -105,7 +103,6 @@
             }
         }
 
-        // Handle form submission
         document.getElementById('editProfileForm').addEventListener('submit', async (e) => {
             e.preventDefault();
             
@@ -149,7 +146,6 @@
             }
         });
 
-        // Initialize page
         loadUserProfile();
     </script>
 </body>

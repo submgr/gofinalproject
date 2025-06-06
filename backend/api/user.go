@@ -18,7 +18,7 @@ func GetUserProfile(c *gin.Context) {
 		return
 	}
 
-	// Don't send sensitive information
+	// не отправляем чувствительную информацию
 	user.Password = ""
 
 	c.JSON(http.StatusOK, user)
@@ -55,7 +55,7 @@ func UpdateUserProfile(c *gin.Context) {
 		return
 	}
 
-	// Check if user is updating their own profile
+	// проверяем обновляет ли пользователь свой профиль
 	userID := c.GetUint("user_id")
 	if user.ID != userID {
 		c.JSON(http.StatusForbidden, gin.H{"error": "Not authorized to update this profile"})
@@ -68,20 +68,20 @@ func UpdateUserProfile(c *gin.Context) {
 		return
 	}
 
-	// Update basic info
+	// обновляем основную информацию
 	user.Name = req.Name
 	user.Email = req.Email
 	user.Phone = req.Phone
 
-	// Handle password update if provided
+	// обрабатываем обновление пароля если он предоставлен
 	if req.CurrentPassword != "" && req.NewPassword != "" {
-		// Verify current password
+		// проверяем текущий пароль
 		if err := user.CheckPassword(req.CurrentPassword); err != nil {
 			c.JSON(http.StatusBadRequest, gin.H{"error": "Current password is incorrect"})
 			return
 		}
 
-		// Set new password
+		// устанавливаем новый пароль
 		user.Password = req.NewPassword
 		if err := user.HashPassword(); err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to hash password"})
@@ -94,7 +94,7 @@ func UpdateUserProfile(c *gin.Context) {
 		return
 	}
 
-	// Don't send password in response
+	// не отправляем пароль в ответе
 	user.Password = ""
 	c.JSON(http.StatusOK, user)
 } 

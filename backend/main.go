@@ -15,23 +15,24 @@ import (
 )
 
 func main() {
-	// Load environment variables
-	if err := godotenv.Load(); err != nil {
+	// загружаем переменные окружения
+	err := godotenv.Load()
+	if err != nil {
 		log.Println("No .env file found")
 	}
 
-	// Initialize database
+	// инициализируем базу данных
 	database.InitDB()
 
-	// Initialize router
+	// инициализируем роутер
 	r := gin.Default()
 
-	// Serve static files
+	// обслуживаем статические файлы
 	r.Static("/static", "../frontend/static")
 	r.Static("/storage", "../storage")
 	r.LoadHTMLGlob("../frontend/templates/*")
 
-	// Frontend routes
+	// маршруты фронтенда
 	r.GET("/", func(c *gin.Context) {
 		c.HTML(http.StatusOK, "index.html", gin.H{
 			"title": "Доска объявлений",
@@ -62,21 +63,22 @@ func main() {
 		c.HTML(http.StatusOK, "recover-password.html", nil)
 	})
 
-	// API routes
+	// маршруты api
 	apiGroup := r.Group("/api")
 	{
-		// Health check
+		// проверка здоровья
 		apiGroup.GET("/health", func(c *gin.Context) {
 			c.JSON(http.StatusOK, gin.H{"status": "ok"})
 		})
 
-		// Auth routes
-		apiGroup.POST("/auth/register", api.Register)
-		apiGroup.POST("/auth/login", api.Login)
-		apiGroup.POST("/auth/recover-password", api.RecoverPassword)
-		apiGroup.POST("/auth/reset-password", api.ResetPassword)
+		// маршруты аутентификации
+		auth := apiGroup.Group("/auth")
+		auth.POST("/register", api.Register)
+		auth.POST("/login", api.Login)
+		auth.POST("/recover-password", api.RecoverPassword)
+		auth.POST("/reset-password", api.ResetPassword)
 
-		// Protected routes
+		// защищенные маршруты
 		protected := apiGroup.Group("")
 		protected.Use(middleware.AuthMiddleware())
 		{
@@ -86,13 +88,14 @@ func main() {
 			protected.PUT("/users/:id", api.UpdateUserProfile)
 		}
 
-		// Public routes
-		apiGroup.GET("/advertisements", api.GetAdvertisements)
-		apiGroup.GET("/advertisements/:id", api.GetAdvertisement)
-		apiGroup.GET("/advertisements/:id/contact", api.GetAdvertisementContact)
-		apiGroup.GET("/users/:id", api.GetUserProfile)
-		apiGroup.GET("/users/:id/advertisements", api.GetUserAdvertisements)
-		apiGroup.GET("/categories", func(c *gin.Context) {
+		// публичные маршруты
+		public := apiGroup.Group("")
+		public.GET("/advertisements", api.GetAdvertisements)
+		public.GET("/advertisements/:id", api.GetAdvertisement)
+		public.GET("/advertisements/:id/contact", api.GetAdvertisementContact)
+		public.GET("/users/:id", api.GetUserProfile)
+		public.GET("/users/:id/advertisements", api.GetUserAdvertisements)
+		public.GET("/categories", func(c *gin.Context) {
 			var categories []models.Category
 			if err := database.DB.Find(&categories).Error; err != nil {
 				c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch categories"})
@@ -102,7 +105,7 @@ func main() {
 		})
 	}
 
-	// Start server
+	// запускаем сервер
 	port := os.Getenv("PORT")
 	if port == "" {
 		port = "8080"
